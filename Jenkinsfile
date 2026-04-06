@@ -37,9 +37,9 @@ pipeline {
             steps {
                 echo '🧪 Running basic test...'
                 sh """
-                    docker run -d --name test-app-${BUILD_NUMBER} -p 5001:9000 ${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker run -d --name test-app-${BUILD_NUMBER} -p 5002:9000 ${IMAGE_NAME}:${BUILD_NUMBER}
                     sleep 5
-                    curl -f http://localhost:5001 || exit 1
+                    curl -f http://localhost:5002 || exit 1
                     docker stop test-app-${BUILD_NUMBER}
                     docker rm test-app-${BUILD_NUMBER}
                 """
