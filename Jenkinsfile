@@ -54,11 +54,11 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_TOKEN'
                 )]) {
-                    sh """
-                        echo "${DOCKER_TOKEN}" | docker login -u "${DOCKER_USER}" --password-stdin
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
                         docker push ${IMAGE_NAME}:${BUILD_NUMBER}
                         docker push ${IMAGE_NAME}:latest
-                    """
+                    '''
                 }
             }
         }
@@ -69,10 +69,10 @@ pipeline {
                 sshagent(['ec2-ssh-key']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
-                        docker pull ${IMAGE_NAME}:latest &&
+                        docker pull ${IMAGE_NAME}:${BUILD_NUMBER} &&
                         docker stop flask-app || true &&
                         docker rm flask-app || true &&
-                        docker run -d --name flask-app -p 5000:9000 ${IMAGE_NAME}:latest
+                        docker run -d --name flask-app -p 5000:9000 ${IMAGE_NAME}:${BUILD_NUMBER}
                         '
                     """
                 }
