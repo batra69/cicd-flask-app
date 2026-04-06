@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "sanchit69/cicd-flask-app"
+        REGISTRY = "docker.io"
     }
 
     stages {
@@ -25,10 +26,10 @@ pipeline {
             steps {
                 echo '🧪 Running basic test...'
                 sh """
-                    docker run -d --name test-app -p 5001:5000 ${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker run -d --name test-app-${BUILD_NUMBER} -p 5001:5000 ${IMAGE_NAME}:${BUILD_NUMBER}
                     sleep 3
                     curl -f http://localhost:5001 || exit 1
-                    docker stop test-app && docker rm test-app
+                    docker stop test-app-${BUILD_NUMBER} && docker rm test-app-${BUILD_NUMBER}
                 """
             }
         }
@@ -39,10 +40,10 @@ pipeline {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
                     usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
+                    passwordVariable: 'DOCKER_TOKEN'
                 )]) {
                     sh """
-                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        echo ${DOCKER_TOKEN} | docker login -u ${DOCKER_USER} --password-stdin
                         docker push ${IMAGE_NAME}:${BUILD_NUMBER}
                         docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest
                         docker push ${IMAGE_NAME}:latest
@@ -56,8 +57,8 @@ pipeline {
                 echo '☸️ Deploying to Kubernetes...'
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
                     sh """
-                        export KUBECONFIG=$KUBE_CONFIG
-                        sed -i 's|IMAGE_PLACEHOLDER|${IMAGE_NAME}:${BUILD_NUMBER}|g' k8s/deployment.yaml
+                        export KUBECONFIG=${KUBE_CONFIG}
+                        sed -i '' 's|IMAGE_PLACEHOLDER|${IMAGE_NAME}:${BUILD_NUMBER}|g' k8s/deployment.yaml
                         kubectl apply -f k8s/deployment.yaml
                         kubectl apply -f k8s/service.yaml
                         kubectl rollout status deployment/flask-app
@@ -70,5 +71,8 @@ pipeline {
     post {
         success { echo '✅ Pipeline completed! App is live.' }
         failure { echo '❌ Pipeline failed. Check the logs above.' }
+        always {
+            sh "docker rmi ${IMAGE_NAME}:${BUILD_NUMBER} || true"
+        }
     }
 }
